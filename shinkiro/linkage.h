@@ -15,7 +15,7 @@ namespace shinkiro {
 		public:
 			double m_length;		//Link length.
 			double m_radius;		//Distance along the link from the link origin to the center of mass.
-			double m_intertia;
+			double m_inertia;
 			double m_mass;
 			double m_theta;			//Current angle in rad.
 			double m_omega;			//Current angular velocity in rad/s.
@@ -44,6 +44,11 @@ namespace shinkiro {
 			//Assumes foot is massless and remains grounded for period of analysis.
 			//Returns a vector of the forces and torques of order [Fx1; Fx2; Fy1; Fy2; T1; T2; Fx3; Fy3; T3].
 			Eigen::VectorXd f_inverseDynamics();
+
+			//Use forward dynamics to find the angular accelerations resulting from some given forces and torques.
+			//Assumes foot is massless and remains grounded for period of analysis.
+			//Returns a vector of angular accelerations of order [alpha1; alpha2; alpha3].
+			Eigen::VectorXd f_forwardDynamics();
 
 
 			//Default constructor, primarily useful for testing so we fill with some arbitrary values.  Defaults to 3 link linkage.

@@ -5,7 +5,7 @@
 /**********************************************************Base functions (constructor etc)************************************************/
 
 //Default Link constructor, primarily useful for testing so we fill with some arbitrary values.
-shinkiro::Link::Link() : m_length(2), m_radius(1), m_mass(1), m_intertia(1), m_theta(EIGEN_PI/4), m_omega(1), m_alpha(1), m_forceX(0), m_forceY(0), m_torque(0) {
+shinkiro::Link::Link() : m_length(2), m_radius(1), m_mass(1), m_inertia(1), m_theta(EIGEN_PI/4), m_omega(1), m_alpha(1), m_forceX(1), m_forceY(-1), m_torque(1) {
 	if (SHOW_DEBUG_OUTPUT) {
 		std::cout << "shinkiro::Link::Link(): Link constructed succesfully.\n";
 	}
@@ -76,15 +76,46 @@ Eigen::VectorXd shinkiro::Linkage::f_inverseDynamics() {
 
 	//Define the vector B, which is 8x1.
 	b << -m_links[0].m_mass * m_links[0].m_radius * (m_links[0].f_sta() + m_links[0].f_ctw2()),
-		m_links[0].m_mass* (m_links[0].m_radius * (m_links[0].f_cta() - m_links[0].f_stw2()) + shinkiro::g),
-		m_links[0].m_intertia* m_links[0].m_alpha,
+		m_links[0].m_mass * (m_links[0].m_radius * (m_links[0].f_cta() - m_links[0].f_stw2()) + shinkiro::g),
+		m_links[0].m_inertia * m_links[0].m_alpha,
 		-m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_radius * (m_links[1].f_sta() + m_links[1].f_ctw2())),
 		m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_radius * (m_links[1].f_cta() - m_links[1].f_stw2()) + shinkiro::g),
-		m_links[1].m_intertia * m_links[1].m_alpha,
+		m_links[1].m_inertia * m_links[1].m_alpha,
 		-m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_length * (m_links[1].f_sta() + m_links[1].f_ctw2()) + m_links[2].m_radius * (m_links[2].f_sta() + m_links[2].f_ctw2())),
 		m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_length * (m_links[1].f_cta() - m_links[1].f_stw2()) + m_links[2].m_radius * (m_links[2].f_cta() - m_links[2].f_stw2()) + shinkiro::g);
 
 
 	//Find f = b\A.
 	return A.colPivHouseholderQr().solve(b);
+}
+
+//Use forward dynamics to find the angular accelerations resulting from some given forces and torques.
+//Assumes foot is massless and remains grounded for period of analysis.
+//Returns a vector of angular accelerations of order [alpha1; alpha2; alpha3].
+Eigen::VectorXd shinkiro::Linkage::f_forwardDynamics() {
+	//Handle the cases for the current number of links.  Eventually generically handle linkages, but for now prototype around 3 link model.
+	if (m_links.size() != 3) {
+		std::cout << "Invalid linkage length\n";
+		return Eigen::VectorXd(3);
+	}
+	
+	//Find the angular accelerations from the moment balance equations.
+	//TODO: Adapt this function for Linkage with n links, as the moment equations are consistently the same.
+	double alpha1 = (m_links[0].m_torque - m_links[1].m_torque + m_links[0].m_forceX * m_links[0].m_radius * sin(m_links[0].m_theta) - m_links[0].m_forceY * m_links[0].m_radius * cos(m_links[0].m_theta)
+		+ m_links[1].m_forceX * (m_links[0].m_length - m_links[0].m_radius) * sin(m_links[0].m_theta) - m_links[1].m_forceY * (m_links[0].m_length - m_links[0].m_radius) * cos(m_links[0].m_theta))
+		/ m_links[0].m_inertia;
+
+	double alpha2 = (m_links[1].m_torque - m_links[2].m_torque + m_links[1].m_forceX * m_links[1].m_radius * sin(m_links[1].m_theta) - m_links[1].m_forceY * m_links[1].m_radius * cos(m_links[1].m_theta)
+		+ m_links[2].m_forceX * (m_links[1].m_length - m_links[1].m_radius) * sin(m_links[1].m_theta) - m_links[2].m_forceY * (m_links[1].m_length - m_links[1].m_radius) * cos(m_links[1].m_theta))
+		/ m_links[1].m_inertia;
+
+	//For the final link, the end forces are zero.
+	double alpha3 = (m_links[2].m_torque + m_links[2].m_forceX * m_links[2].m_radius * sin(m_links[2].m_theta) - m_links[2].m_forceY * m_links[2].m_radius * cos(m_links[2].m_theta))
+		/ m_links[2].m_inertia;
+
+	//Store and return the angular accelerations.
+	Eigen::VectorXd temp(m_links.size());
+	temp << alpha1, alpha2, alpha3;
+
+	return temp;
 }
