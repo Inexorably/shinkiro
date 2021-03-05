@@ -6,7 +6,7 @@ int main(){
     //Test the inverse dynamics with some default linkage.
     shinkiro::Linkage l;
 
-    l.f_inverseDynamics();
+    std::cout << l.f_inverseDynamics();
 
 
 

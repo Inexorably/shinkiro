@@ -27,34 +27,44 @@ shinkiro::Linkage::Linkage() {
 
 /**********************************************************Math helper functions***********************************************************/
 
-//Return sin(theta), which commonly appears in calculations.
-double shinkiro::Link::f_sin() const {
-	return sin(m_theta);
-}	
+//Returns cos(theta)*alpha.
+double shinkiro::Link::f_cta() const {
+	return cos(m_theta) * m_alpha;
+}
 
-//Return cos(theta), which commonly appears in calculations.
-double shinkiro::Link::f_cos() const {
-	return cos(m_theta);
+//Returns sin(theta)*alpha.
+double shinkiro::Link::f_sta() const {
+	return sin(m_theta) * m_alpha;
+}
+
+//Returns cos(theta)*omega^2.
+double shinkiro::Link::f_ctw2() const {
+	return cos(m_theta) * pow(m_omega, 2);
+}
+
+//Returns sin(theta)*omega^2.
+double shinkiro::Link::f_stw2() const {
+	return sin(m_theta) * pow(m_omega, 2);
 }
 
 /**********************************************************Solver functions***************************************************************/
 
 //Use inverse dynamics to calculate the forces and moments for a three link planar bipedal / inverted pendulum model.
 //Assumes foot is massless and remains grounded for period of analysis.  Assumes that position, velocity, and acceleration values are known and defined in m_theta, m_omega, m_alpha.
-//Returns a linkage with the m_forceX, m_forceY, and m_torque values of each link found.
-shinkiro::Linkage shinkiro::Linkage::f_inverseDynamics() {
+//Returns a vector of the forces and torques of order [Fx1; Fx2; Fy1; Fy2; T1; T2; Fx3; Fy3; T3].
+Eigen::VectorXd shinkiro::Linkage::f_inverseDynamics() {
 	//Handle the cases for the current number of links.  Eventually generically handle linkages, but for now prototype around 3 link model.
 	if (m_links.size() != 3) {
 		std::cout << "Invalid linkage length\n";
-		return *this;
+		return Eigen::VectorXd(8);
 	}
 
-	//The inverse dynamics for linkage of length three can be written in the form Af=B.
-	//Prellocate A and B.
-	Eigen::MatrixXd A = Eigen::MatrixXd::Zero(9,9);
-	Eigen::MatrixXd B = Eigen::MatrixXd::Zero(9, 1);
+	//The inverse dynamics for linkage of length three can be written in the form Af=b.
+	//Prellocate A and b.
+	Eigen::MatrixXd A(8, 9);
+	Eigen::VectorXd b(8);
 
-	//Define the matrix A.
+	//Define the matrix A, which is 8x9.
 	A << 1, -1, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 1, -1, 0, 0, 0, 0, 0,
 		1, -1, m_links[0].m_radius* sin(m_links[0].m_theta), -1 * m_links[0].m_radius * cos(m_links[0].m_theta), (m_links[0].m_length - m_links[0].m_radius)* sin(m_links[0].m_theta), (m_links[0].m_length - m_links[0].m_radius)* cos(m_links[0].m_theta), 0, 0, 0,
@@ -64,10 +74,17 @@ shinkiro::Linkage shinkiro::Linkage::f_inverseDynamics() {
 		0, 0, 0, 0, 0, 0, 1, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 1, 0;
 
-	std::cout << A;
+	//Define the vector B, which is 8x1.
+	b << -m_links[0].m_mass * m_links[0].m_radius * (m_links[0].f_sta() + m_links[0].f_ctw2()),
+		m_links[0].m_mass* (m_links[0].m_radius * (m_links[0].f_cta() - m_links[0].f_stw2()) + shinkiro::g),
+		m_links[0].m_intertia* m_links[0].m_alpha,
+		-m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_radius * (m_links[1].f_sta() + m_links[1].f_ctw2())),
+		m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_radius * (m_links[1].f_cta() - m_links[1].f_stw2()) + shinkiro::g),
+		m_links[1].m_intertia * m_links[1].m_alpha,
+		-m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_length * (m_links[1].f_sta() + m_links[1].f_ctw2()) + m_links[2].m_radius * (m_links[2].f_sta() + m_links[2].f_ctw2())),
+		m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_length * (m_links[1].f_cta() - m_links[1].f_stw2()) + m_links[2].m_radius * (m_links[2].f_cta() - m_links[2].f_stw2()) + shinkiro::g);
 
 
-
-	//temp
-	return *this;
+	//Find f = b\A.
+	return A.colPivHouseholderQr().solve(b);
 }
