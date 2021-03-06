@@ -61,10 +61,10 @@ Eigen::VectorXd shinkiro::Linkage::f_inverseDynamics() {
 
 	//The inverse dynamics for linkage of length three can be written in the form Af=b.
 	//Prellocate A and b.
-	Eigen::MatrixXd A(8, 9);
-	Eigen::VectorXd b(8);
+	Eigen::MatrixXd A(9, 9);
+	Eigen::VectorXd b(9);
 
-	//Define the matrix A, which is 8x9.
+	//Define the matrix A, which is 9x9.
 	A << 1, -1, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 1, -1, 0, 0, 0, 0, 0,
 		1, -1, m_links[0].m_radius* sin(m_links[0].m_theta), -1 * m_links[0].m_radius * cos(m_links[0].m_theta), (m_links[0].m_length - m_links[0].m_radius)* sin(m_links[0].m_theta), (m_links[0].m_length - m_links[0].m_radius)* cos(m_links[0].m_theta), 0, 0, 0,
@@ -72,17 +72,19 @@ Eigen::VectorXd shinkiro::Linkage::f_inverseDynamics() {
 		0, 0, 0, 1, 0, 0, 0, -1, 0,
 		0, m_links[1].m_radius* sin(m_links[1].m_theta), 0, -1 * m_links[1].m_radius * cos(m_links[1].m_theta), 0, 1, (m_links[1].m_length - m_links[1].m_radius)* sin(m_links[1].m_theta), -1 * (m_links[1].m_length - m_links[1].m_radius) * cos(m_links[1].m_theta), -1,
 		0, 0, 0, 0, 0, 0, 1, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 1, 0;
+		0, 0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, m_links[2].m_radius* sin(m_links[2].m_theta), -m_links[2].m_radius * cos(m_links[2].m_theta), 1;
 
-	//Define the vector B, which is 8x1.
+	//Define the vector B, which is 9x1.
 	b << -m_links[0].m_mass * m_links[0].m_radius * (m_links[0].f_sta() + m_links[0].f_ctw2()),
-		m_links[0].m_mass * (m_links[0].m_radius * (m_links[0].f_cta() - m_links[0].f_stw2()) + shinkiro::g),
-		m_links[0].m_inertia * m_links[0].m_alpha,
+		m_links[0].m_mass* (m_links[0].m_radius * (m_links[0].f_cta() - m_links[0].f_stw2()) + shinkiro::g),
+		m_links[0].m_inertia* m_links[0].m_alpha,
 		-m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_radius * (m_links[1].f_sta() + m_links[1].f_ctw2())),
-		m_links[1].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_radius * (m_links[1].f_cta() - m_links[1].f_stw2()) + shinkiro::g),
-		m_links[1].m_inertia * m_links[1].m_alpha,
+		m_links[1].m_mass* (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_radius * (m_links[1].f_cta() - m_links[1].f_stw2()) + shinkiro::g),
+		m_links[1].m_inertia* m_links[1].m_alpha,
 		-m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_sta() + m_links[0].f_ctw2()) + m_links[1].m_length * (m_links[1].f_sta() + m_links[1].f_ctw2()) + m_links[2].m_radius * (m_links[2].f_sta() + m_links[2].f_ctw2())),
-		m_links[2].m_mass * (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_length * (m_links[1].f_cta() - m_links[1].f_stw2()) + m_links[2].m_radius * (m_links[2].f_cta() - m_links[2].f_stw2()) + shinkiro::g);
+		m_links[2].m_mass* (m_links[0].m_length * (m_links[0].f_cta() - m_links[0].f_stw2()) + m_links[1].m_length * (m_links[1].f_cta() - m_links[1].f_stw2()) + m_links[2].m_radius * (m_links[2].f_cta() - m_links[2].f_stw2()) + shinkiro::g),
+		m_links[2].m_inertia* m_links[2].m_alpha;
 
 
 	//Find f = b\A.
@@ -112,6 +114,11 @@ Eigen::VectorXd shinkiro::Linkage::f_forwardDynamics() {
 	//For the final link, the end forces are zero.
 	double alpha3 = (m_links[2].m_torque + m_links[2].m_forceX * m_links[2].m_radius * sin(m_links[2].m_theta) - m_links[2].m_forceY * m_links[2].m_radius * cos(m_links[2].m_theta))
 		/ m_links[2].m_inertia;
+
+	/*
+	//Check alpha1 from the equation 1.
+	double alpha1a = ((m_links[0].m_forceX - m_links[1].m_forceX) / (-m_links[0].m_mass * m_links[0].m_radius) - cos(m_links[0].f_ctw2())) / sin(m_links[0].m_theta);
+	*/
 
 	//Store and return the angular accelerations.
 	Eigen::VectorXd temp(m_links.size());
