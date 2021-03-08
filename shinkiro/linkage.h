@@ -56,8 +56,9 @@ namespace shinkiro {
 			//Returns a vector of angular accelerations of order [alpha1; alpha2; alpha3].
 			Eigen::VectorXd f_forwardDynamicsTorques(Eigen::VectorXd torques) const;
 
-			//Returns a linkage stepped forward using some input torques.
-			Linkage f_stepForwardTorques(const double dt, Eigen::VectorXd torques) const;
+			//Steps forward in the current linkage applying some torques.
+			//Returns a copy of the result.  NOTE: INTEGRATES CURRENT LINKAGE OBJECT *this.
+			Linkage f_stepForwardTorques(const double dt, Eigen::VectorXd torques);
 
 			//Uses the angles, angular accelerations, and positions as input.
 			//Returns the cartsian positions, velocities, and accelerations for the current state.

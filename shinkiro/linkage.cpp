@@ -156,9 +156,18 @@ Eigen::VectorXd shinkiro::Linkage::f_forwardDynamicsTorques(Eigen::VectorXd torq
 }
 
 //Returns a linkage stepped forward using some input torques.
-shinkiro::Linkage shinkiro::Linkage::f_stepForwardTorques(const double dt, Eigen::VectorXd torques) const {
-	//TODO
+//Returns a copy of the result.  NOTE: INTEGRATES CURRENT LINKAGE OBJECT *this.
+shinkiro::Linkage shinkiro::Linkage::f_stepForwardTorques(const double dt, Eigen::VectorXd torques) {
+	//Get the angular accelerations for the given torques.
+	Eigen::VectorXd alphas = f_forwardDynamicsTorques(torques);
+
+	//Update the new angular velocities and positions.
+	for (int i = 0; i < m_links.size(); ++i) {
+		m_links[i].m_omega = m_links[i].m_omega + alphas[i] * dt;
+		m_links[i].m_theta = m_links[i].m_theta + m_links[i].m_omega * dt;
+	}
 	
+	//Return a copy if desired for plotting purposes.
 	return *this;
 }
 
